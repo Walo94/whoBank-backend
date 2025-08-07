@@ -1,0 +1,4 @@
+// whobank-api/.vscode/settings.json
+{
+  "python.analysis.extraPaths": ["./app"]
+}
