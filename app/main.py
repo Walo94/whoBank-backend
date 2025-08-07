@@ -16,7 +16,7 @@ origins = [
     "http://192.168.70.108:8080", # URL de desarrollo de Vite/React
     "http://http://192.168.192.1:8080",
     "http://localhost:8080", # URL común de desarrollo de React
-    # "https://www.tuapp.com", # En el futuro, añade aquí tu dominio de producción
+    "https://converter-bank.netlify.app",
 ]
 
 app.add_middleware(
