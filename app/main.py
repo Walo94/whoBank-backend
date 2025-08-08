@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, analysis  # Importa los routers
+from app.routers import contact
 
 # --- Creación de la Instancia de FastAPI ---
 app = FastAPI(
@@ -14,7 +15,6 @@ app = FastAPI(
 # Define los orígenes permitidos para las peticiones del frontend
 origins = [
     "http://192.168.70.108:8080", # URL de desarrollo de Vite/React
-    "http://http://192.168.192.1:8080",
     "http://localhost:8080", # URL común de desarrollo de React
     "https://converter-bank.netlify.app",
 ]
@@ -31,6 +31,7 @@ app.add_middleware(
 # Aquí se conectan los endpoints definidos en otros archivos a la app principal.
 app.include_router(auth.router)
 app.include_router(analysis.router)
+app.include_router(contact.router)
 
 # --- Endpoint Raíz ---
 @app.get("/", tags=["Root"])

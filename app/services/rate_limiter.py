@@ -9,7 +9,7 @@ anonymous_usage: dict[str, datetime] = {}
 
 def check_anonymous_limit(request: Request):
     """
-    Verifica si una IP ha excedido el límite de 1 conversión cada 24 horas.
+    Verifica si una IP ha excedido el límite de 3 conversiónes cada 24 horas.
     """
     ip = request.client.host
     if not ip:
@@ -22,7 +22,7 @@ def check_anonymous_limit(request: Request):
             raise HTTPException(
                 status_code=429, 
                 detail={
-                    "message": "Límite anónimo de 1 conversión cada 24 horas excedido.",
+                    "message": "Límite anónimo de 3 conversiónes cada 24 horas excedido.",
                     "cooldown": "Vuelve mañana o regístrate para más conversiones."
                 }
             )
@@ -49,8 +49,9 @@ def check_registered_user_limit(user: Dict): # CAMBIO: de 'async def' a 'def'
             if datetime.now(timezone.utc) - last_conversion_dt > timedelta(hours=24):
                 daily_count = 0
 
-        if daily_count >= 100:
-            raise HTTPException(status_code=429, detail="Límite de 3 conversiones diarias excedido. Vuelve mañana o suscríbete para más.")
+        if daily_count >= profile.get("conversions_tokens", 7):
+
+            raise HTTPException(status_code=429, detail="Límite de 7 conversiones diarias excedido. Vuelve mañana o suscríbete para más.")
 
         # CAMBIO: Se elimina 'await'
         supabase.table("profiles").update({

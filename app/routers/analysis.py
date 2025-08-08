@@ -16,11 +16,13 @@ from app.services import (
     document_identifier,
     pdf_processor_banorte,       # Para identificar el banco y tipo de cuenta.
     rate_limiter,              # Para el control de límites de uso (placeholders).
-    pdf_processor_personal,    # Procesador para Banamex Personal.
-    pdf_processor_empresarial, # Procesador para Banamex Empresarial.
+    pdf_processor_banamex_personal,    # Procesador para Banamex Personal.
+    pdf_processor_banamex_empresarial, # Procesador para Banamex Empresarial.
     pdf_processor_banbajio,    # Procesador para BanBajio Empresarial.
     pdf_processor_bbva,         # Procesador para BBVA.
     pdf_processor_banorte,      # Procesador para Banorte.
+    pdf_processor_scotiabank,   # Procesador para Scotiabank.
+
 )
 
 # --- Configuración del Router y Autenticación ---
@@ -83,25 +85,28 @@ async def process_pdf_endpoint(
         with open(ruta_temporal, "wb") as buffer:
             shutil.copyfileobj(archivo.file, buffer)
 
-        texto_pagina_uno = ""
+        texto_completo = ""
         with pdfplumber.open(ruta_temporal) as pdf:
             if not pdf.pages:
                 raise HTTPException(status_code=422, detail="El archivo PDF está vacío o corrupto.")
-            texto_pagina_uno = pdf.pages[0].extract_text(x_tolerance=2)
+            
+            # Se extrae el texto de TODAS las páginas para mayor robustez,
+            # usando tolerancias que funcionan bien con PDFs complejos.
+            texto_completo = "".join(page.extract_text(x_tolerance=2, y_tolerance=2) or "" for page in pdf.pages)
 
-        if not texto_pagina_uno:
-            raise HTTPException(status_code=422, detail="No se pudo leer el contenido del PDF.")
+        if not texto_completo:
+            raise HTTPException(status_code=422, detail="No se pudo leer el contenido del PDF o el archivo es ilegible.")
 
         # --- Flujo de Identificación y Procesamiento Jerárquico ---
-        banco = document_identifier.identificar_banco(texto_pagina_uno)
+        banco = document_identifier.identificar_banco(texto_completo)
         datos_analizados = None
 
         if banco == "banamex":
-            tipo_cuenta = document_identifier.identificar_tipo_cuenta_banamex(texto_pagina_uno)
+            tipo_cuenta = document_identifier.identificar_tipo_cuenta_banamex(texto_completo)
             if tipo_cuenta == "personal":
-                datos_analizados = pdf_processor_personal.procesar_estado_de_cuenta(ruta_temporal)
+                datos_analizados = pdf_processor_banamex_personal.procesar_estado_de_cuenta(ruta_temporal)
             elif tipo_cuenta == "empresarial":
-                datos_analizados = pdf_processor_empresarial.procesar_estado_de_cuenta_empresarial(ruta_temporal)
+                datos_analizados = pdf_processor_banamex_empresarial.procesar_estado_de_cuenta_empresarial(ruta_temporal)
         
         elif banco == "banbajio":
             # Asumimos que solo hay un tipo de cuenta para BanBajío por ahora
@@ -120,6 +125,12 @@ async def process_pdf_endpoint(
             # No es necesario un identificador de tipo de cuenta adicional.
             datos_analizados = pdf_processor_banorte.procesar_estado_de_cuenta_banorte(ruta_temporal)
         # --- FIN DE LA INTEGRACIÓN DE BANORTE ---
+        # --- INICIO DE LA INTEGRACIÓN DE SCOTIABANK ---
+        elif banco == "scotiabank":
+            tipo_cuenta = document_identifier.identificar_tipo_cuenta_scotiabank(texto_completo)
+            if tipo_cuenta == "pyme_pfae":
+                datos_analizados = pdf_processor_scotiabank.procesar_estado_de_cuenta_scotiabank(ruta_temporal)
+    # --- FIN DE LA INTEGRACIÓN DE SCOTIABANK ---
 
 
         if not datos_analizados:

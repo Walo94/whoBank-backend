@@ -43,7 +43,8 @@ async def get_user_panel_data(current_user: Dict = Depends(get_current_user)):
             raise HTTPException(status_code=404, detail="Perfil de usuario no encontrado.")
             
         profile_data = profile_res.data
-        tokens_disponibles = 3 - profile_data.get("daily_conversions_count", 0)
+        tokens_disponibles = profile_data.get("conversions_tokens", 0) - profile_data.get("daily_conversions_count", 0)
+
         
         profile_info = ProfileData(
             plan=profile_data.get("plan_activo", "gratis").strip().replace("'", ""),
